@@ -1,6 +1,19 @@
 import React, { useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyA8Pg_6hlZ2dlPUWErDRLx0GkWWJ-m219E",
+  authDomain: "al-dabbous-system.firebaseapp.com",
+  projectId: "al-dabbous-system",
+  storageBucket: "al-dabbous-system.firebasestorage.app",
+  messagingSenderId: "187643398356",
+  appId: "1:187643398356:web:0e61fff5d10c4349df9341"
+};
+
+const appFirebase = initializeApp(firebaseConfig);
+const db = getFirestore(appFirebase);
 const APPLICATIONS = {
   "Drop Side Cargo Body": { baseCost: 850, material: "MS chequered plate / steel structure", requiresPump: false, requiresCrane: false },
   "Crane Installation with Cargo Body": { baseCost: 1450, material: "Heavy duty reinforced sub-frame + cargo body", requiresPump: false, requiresCrane: true },
