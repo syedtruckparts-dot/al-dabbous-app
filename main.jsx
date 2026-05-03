@@ -1,65 +1,120 @@
 import React, { useMemo, useState } from "react";
-import { createRoot } from "react-dom/client";
 
 const APPLICATIONS = {
-  "Drop Side Cargo Body": { baseCost: 850, material: "MS chequered plate / steel structure", defaultSpec: "Normal drop side cargo body with steel floor, side panels, rear gate, mudguards and painting.", requiresPump: false, requiresCrane: false },
-  "Crane Installation with Cargo Body": { baseCost: 1450, material: "Heavy duty sub-frame + cargo body", defaultSpec: "Crane mounting sub-frame, cargo body, stabilizer support, hydraulic integration and safety finishing.", requiresPump: false, requiresCrane: true },
-  "Fuel Tank": { baseCost: 2200, material: "ASTM A283 Grade C / MS tank steel", defaultSpec: "Fuel tank fabrication with internal baffles, manholes, discharge lines, valves, painting and safety accessories.", requiresPump: false, requiresCrane: false },
-  "Water Tank": { baseCost: 1800, material: "MS tank steel / optional stainless steel", defaultSpec: "Water tank body with baffles, filling port, discharge system, ladder, rear spray bar optional and painting.", requiresPump: true, requiresCrane: false },
-  "Vacuum Tank": { baseCost: 3200, material: "ASTM A283 Grade C or equivalent", defaultSpec: "Truck mounted vacuum tanker with tank, PTO driven vacuum system, suction/discharge lines, safety valves and hose carrier.", requiresPump: true, requiresCrane: false },
-  "Dump Body": { baseCost: 2100, material: "High tensile steel / Hardox optional", defaultSpec: "Rear tipping dump body with hydraulic cylinder, sub-frame, tailgate, mudguards, painting and safety lock.", requiresPump: false, requiresCrane: false },
-  "Recovery Truck Body": { baseCost: 2600, material: "Heavy duty steel platform", defaultSpec: "Recovery body with platform, winch provision, ramps, tool box, safety lights and painting.", requiresPump: false, requiresCrane: false },
+  "Vacuum Tank": {
+    baseCost: 3200,
+    material: "ASTM A283 Grade C",
+    requiresPump: true,
+    requiresCrane: false,
+  },
+  "Dump Body": {
+    baseCost: 2100,
+    material: "High tensile steel",
+    requiresPump: false,
+    requiresCrane: false,
+  },
+  "Crane Body": {
+    baseCost: 1450,
+    material: "Heavy duty sub-frame",
+    requiresPump: false,
+    requiresCrane: true,
+  }
+};
+
+const TECH_LIBRARY = {
+  "Vacuum Tank": {
+    title: "Vacuum Tanker Specification",
+    code: "DS-VT-001",
+    sections: [
+      ["Tank Material", "ASTM A283 Grade C"],
+      ["Pump System", "PTO driven vacuum pump"],
+      ["Safety", "Relief valves, shutoff system"]
+    ],
+    drawings: ["Side View", "Rear View", "Pump Layout"]
+  },
+  "Dump Body": {
+    title: "Dump Body Specification",
+    code: "DS-DB-001",
+    sections: [
+      ["Body", "Heavy duty steel"],
+      ["Hydraulics", "Tipping cylinder"],
+      ["Safety", "Body lock system"]
+    ],
+    drawings: ["Side View", "Tipping View"]
+  },
+  "Crane Body": {
+    title: "Crane Body Specification",
+    code: "DS-CR-001",
+    sections: [
+      ["Sub-frame", "Reinforced"],
+      ["Crane Mount", "Hydraulic system"],
+      ["Stability", "Outriggers"]
+    ],
+    drawings: ["Crane Layout", "Mounting"]
+  }
 };
 
 const PUMPS = {
-  "Not Required": { cost: 0, spec: "No pump required." },
-  "MORO M9": { cost: 1450, spec: "Rotary vane vacuum pump, approx. 15,000 L/min, suitable up to 15 inHg vacuum." },
-  "Jurop PR200": { cost: 2100, spec: "Heavy duty vacuum pump suitable for high airflow industrial vacuum applications." },
-  "Hydraulic Water Pump": { cost: 450, spec: "Hydraulic / PTO water pump for water tanker discharge and transfer." },
+  "Not Required": 0,
+  "MORO M9": 1450
 };
 
 const CRANES = {
-  "Not Required": { cost: 0, spec: "No crane required." },
-  "3 Ton Crane": { cost: 2200, spec: "Light truck mounted crane with hydraulic stabilizers." },
-  "5 Ton Crane": { cost: 3800, spec: "Medium duty truck mounted crane with sub-frame and hydraulic stabilizers." },
-  "6 Ton Crane": { cost: 4600, spec: "Heavy duty truck mounted crane installation with reinforced sub-frame." },
+  "Not Required": 0,
+  "5 Ton Crane": 3800
 };
 
-const styles = {
-  page: { minHeight: "100vh", background: "#f4f7fb", padding: 24, fontFamily: "Arial, sans-serif", color: "#172033" },
-  wrap: { maxWidth: 1200, margin: "0 auto" },
-  header: { background: "white", borderRadius: 18, padding: 22, boxShadow: "0 2px 10px rgba(0,0,0,0.06)", display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 18 },
-  h1: { fontSize: 26, margin: 0, fontWeight: 800 }, small: { color: "#64748b", fontSize: 13 },
-  tabs: { display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" },
-  tab: { border: "1px solid #cbd5e1", background: "white", padding: "10px 14px", borderRadius: 12, cursor: "pointer", fontWeight: 700 }, activeTab: { background: "#0f172a", color: "white", border: "1px solid #0f172a" },
-  grid: { display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }, card: { background: "white", borderRadius: 18, padding: 22, boxShadow: "0 2px 10px rgba(0,0,0,0.06)" },
-  formGrid: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }, label: { fontSize: 13, fontWeight: 700, color: "#334155", display: "block", marginBottom: 5 },
-  input: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid #cbd5e1", fontSize: 14, boxSizing: "border-box" }, row: { display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: "1px solid #eef2f7" },
-  priceBox: { marginTop: 18, padding: 18, borderRadius: 14, background: "#eef2ff" }, price: { fontSize: 28, fontWeight: 900, margin: "6px 0 0" }, button: { border: 0, background: "#0f172a", color: "white", padding: "10px 14px", borderRadius: 12, cursor: "pointer", fontWeight: 800 },
-  outlineButton: { border: "1px solid #cbd5e1", background: "white", color: "#0f172a", padding: "10px 14px", borderRadius: 12, cursor: "pointer", fontWeight: 800 }, table: { width: "100%", borderCollapse: "collapse", fontSize: 14 }, th: { background: "#f1f5f9", padding: 10, textAlign: "left", border: "1px solid #e2e8f0" }, td: { padding: 10, border: "1px solid #e2e8f0" }, badge: { display: "inline-block", padding: "4px 9px", background: "#e0f2fe", borderRadius: 999, fontSize: 12, fontWeight: 700 },
-};
+export default function App() {
+  const [rfq, setRfq] = useState({
+    application: "Vacuum Tank",
+    pump: "MORO M9",
+    crane: "Not Required",
+    margin: 18,
+  });
 
-function AlDabbousQuotationApp() {
-  const [tab, setTab] = useState("rfq");
-  const [deals, setDeals] = useState([]);
-  const [rfq, setRfq] = useState({ quoteNo: "DS-26085", date: new Date().toISOString().slice(0, 10), customer: "", contact: "", email: "", phone: "", chassis: "Hino / FAW / Isuzu", wheelbase: "", application: "Vacuum Tank", capacity: "3,000 US Gallons", pump: "MORO M9", crane: "Not Required", accessories: 250, labor: 500, margin: 18, notes: "Delivery, chassis suitability and final technical approval are subject to engineering confirmation." });
-  const appConfig = APPLICATIONS[rfq.application] || APPLICATIONS["Vacuum Tank"];
-  const pumpConfig = PUMPS[rfq.pump] || PUMPS["Not Required"];
-  const craneConfig = CRANES[rfq.crane] || CRANES["Not Required"];
-  const totals = useMemo(() => { const accessories = Number(rfq.accessories) || 0; const labor = Number(rfq.labor) || 0; const margin = Math.min(Math.max(Number(rfq.margin) || 0, 0), 80); const totalCost = appConfig.baseCost + pumpConfig.cost + craneConfig.cost + accessories + labor; const sellingPrice = totalCost / (1 - margin / 100); return { accessories, labor, margin, totalCost, sellingPrice }; }, [rfq, appConfig, pumpConfig, craneConfig]);
-  function update(key, value) { setRfq((prev) => { const next = { ...prev, [key]: value }; if (key === "application") { const selected = APPLICATIONS[value]; if (!selected.requiresPump) next.pump = "Not Required"; if (!selected.requiresCrane) next.crane = "Not Required"; if (selected.requiresPump && next.pump === "Not Required") next.pump = value === "Water Tank" ? "Hydraulic Water Pump" : "MORO M9"; if (selected.requiresCrane && next.crane === "Not Required") next.crane = "5 Ton Crane"; } return next; }); }
-  function saveDeal() { setDeals((prev) => [{ id: Date.now(), quoteNo: rfq.quoteNo, date: rfq.date, customer: rfq.customer || "Unnamed Customer", application: rfq.application, value: totals.sellingPrice, status: "Quote Sent" }, ...prev]); setTab("deals"); }
-  return <div style={styles.page}><div style={styles.wrap}><div style={styles.header}><div><h1 style={styles.h1}>Al Dabbous Steel Quotation System</h1><div style={styles.small}>Basic RFQ, costing, quotation preview and deal tracker.</div></div><div style={{display:"flex",gap:8}}><button style={styles.button} onClick={saveDeal}>Save Deal</button><button style={styles.outlineButton} onClick={() => window.print()}>Print Proposal</button></div></div><div style={styles.tabs}>{["rfq","quote","deals","library"].map((x)=><button key={x} onClick={()=>setTab(x)} style={{...styles.tab,...(tab===x?styles.activeTab:{})}}>{x === "rfq" ? "RFQ Configurator" : x === "quote" ? "Quote Preview" : x === "deals" ? "Deal Tracker" : "Libraries"}</button>)}</div>{tab === "rfq" && <RFQ rfq={rfq} update={update} appConfig={appConfig} totals={totals} pumpConfig={pumpConfig} craneConfig={craneConfig}/>} {tab === "quote" && <Proposal rfq={rfq} appConfig={appConfig} pumpConfig={pumpConfig} craneConfig={craneConfig} totals={totals}/>} {tab === "deals" && <Deals deals={deals}/>} {tab === "library" && <Libraries/>}</div></div>;
+  const app = APPLICATIONS[rfq.application];
+  const tech = TECH_LIBRARY[rfq.application];
+
+  const totalCost = app.baseCost + PUMPS[rfq.pump] + CRANES[rfq.crane];
+  const selling = totalCost / (1 - rfq.margin / 100);
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h1>Al Dabbous Quotation System</h1>
+
+      <h2>RFQ</h2>
+      <select onChange={(e) => setRfq({...rfq, application: e.target.value})}>
+        {Object.keys(APPLICATIONS).map(a => <option key={a}>{a}</option>)}
+      </select>
+
+      {app.requiresPump && (
+        <select onChange={(e) => setRfq({...rfq, pump: e.target.value})}>
+          {Object.keys(PUMPS).map(p => <option key={p}>{p}</option>)}
+        </select>
+      )}
+
+      {app.requiresCrane && (
+        <select onChange={(e) => setRfq({...rfq, crane: e.target.value})}>
+          {Object.keys(CRANES).map(c => <option key={c}>{c}</option>)}
+        </select>
+      )}
+
+      <h2>Cost</h2>
+      <p>Total Cost: {totalCost}</p>
+      <p>Selling Price: {selling.toFixed(2)}</p>
+
+      <h2>Technical Spec</h2>
+      <p>{tech.title}</p>
+      {tech.sections.map(([k,v]) => (
+        <div key={k}>{k}: {v}</div>
+      ))}
+
+      <h2>Drawings</h2>
+      {tech.drawings.map(d => (
+        <div key={d} style={{border:"1px dashed gray", padding:10, margin:5}}>
+          {d} (placeholder)
+        </div>
+      ))}
+    </div>
+  );
 }
-function RFQ({rfq,update,appConfig,totals,pumpConfig,craneConfig}){return <div style={styles.grid}><div style={styles.card}><h2>RFQ Details</h2><div style={styles.formGrid}><InputField label="Quote No" value={rfq.quoteNo} onChange={(v)=>update("quoteNo",v)}/><InputField label="Date" type="date" value={rfq.date} onChange={(v)=>update("date",v)}/><InputField label="Customer" value={rfq.customer} onChange={(v)=>update("customer",v)}/><InputField label="Contact Person" value={rfq.contact} onChange={(v)=>update("contact",v)}/><InputField label="Email" value={rfq.email} onChange={(v)=>update("email",v)}/><InputField label="Phone" value={rfq.phone} onChange={(v)=>update("phone",v)}/><InputField label="Chassis" value={rfq.chassis} onChange={(v)=>update("chassis",v)}/><InputField label="Wheelbase" value={rfq.wheelbase} onChange={(v)=>update("wheelbase",v)}/><SelectField label="Application Type" value={rfq.application} options={Object.keys(APPLICATIONS)} onChange={(v)=>update("application",v)}/><InputField label="Capacity" value={rfq.capacity} onChange={(v)=>update("capacity",v)}/><SelectField label="Pump Selection" value={rfq.pump} options={Object.keys(PUMPS)} onChange={(v)=>update("pump",v)} disabled={!appConfig.requiresPump}/><SelectField label="Crane Selection" value={rfq.crane} options={Object.keys(CRANES)} onChange={(v)=>update("crane",v)} disabled={!appConfig.requiresCrane}/><InputField label="Accessories Cost KWD" type="number" value={rfq.accessories} onChange={(v)=>update("accessories",v)}/><InputField label="Labor Cost KWD" type="number" value={rfq.labor} onChange={(v)=>update("labor",v)}/><InputField label="Margin %" type="number" value={rfq.margin} onChange={(v)=>update("margin",v)}/></div><div style={{marginTop:14}}><label style={styles.label}>Notes</label><textarea style={{...styles.input,minHeight:80}} value={rfq.notes} onChange={(e)=>update("notes",e.target.value)}/></div></div><div style={styles.card}><h2>Live Costing</h2><CostRow label="Base Fabrication" value={appConfig.baseCost}/><CostRow label="Pump" value={pumpConfig.cost}/><CostRow label="Crane" value={craneConfig.cost}/><CostRow label="Accessories" value={totals.accessories}/><CostRow label="Labor" value={totals.labor}/><CostRow label="Total Cost" value={totals.totalCost} bold/><div style={styles.priceBox}><div style={styles.small}>Selling Price</div><div style={styles.price}>KWD {totals.sellingPrice.toFixed(3)}</div><div style={styles.badge}>Margin {totals.margin}%</div></div></div></div>}
-function InputField({ label, value, onChange, type = "text" }) { return <div><label style={styles.label}>{label}</label><input style={styles.input} type={type} value={value} onChange={(e)=>onChange(e.target.value)}/></div>; }
-function SelectField({ label, value, options, onChange, disabled }) { return <div><label style={styles.label}>{label}</label><select style={{...styles.input,background:disabled?"#f1f5f9":"white"}} value={value} onChange={(e)=>onChange(e.target.value)} disabled={disabled}>{options.map((x)=><option key={x} value={x}>{x}</option>)}</select></div>; }
-function CostRow({ label, value, bold }) { return <div style={{...styles.row,fontWeight:bold?900:500}}><span>{label}</span><span>KWD {Number(value||0).toFixed(3)}</span></div>; }
-function Proposal({rfq,appConfig,pumpConfig,craneConfig,totals}){return <div style={styles.card}><div style={{borderBottom:"4px solid #0f172a",paddingBottom:16,display:"flex",justifyContent:"space-between",gap:20}}><div style={{width:130,height:80,border:"1px solid #cbd5e1",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",textAlign:"center",fontWeight:900,fontSize:12}}>AL DABBOUS<br/>STEEL</div><div style={{textAlign:"right"}}><h2 style={{margin:0}}>AL DABBOUS STEEL FACTORY</h2><div style={styles.small}>Quotation / Technical Proposal</div><div style={{...styles.small,marginTop:8}}>P.O. Box 46770 Fahaheel | Industrial Area - Plot 135 | Kuwait</div></div></div><div style={{marginTop:20,background:"#f1f5f9",padding:16,borderRadius:14,textAlign:"center"}}><h2 style={{margin:0,textTransform:"uppercase"}}>{rfq.application} Proposal</h2><div style={styles.small}>Quote No: {rfq.quoteNo} | Date: {rfq.date}</div></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:18}}><Info title="Customer" rows={[["Company",rfq.customer||"-"],["Contact",rfq.contact||"-"],["Email",rfq.email||"-"],["Phone",rfq.phone||"-"]]}/><Info title="Project" rows={[["Chassis",rfq.chassis],["Wheelbase",rfq.wheelbase||"-"],["Application",rfq.application],["Capacity",rfq.capacity]]}/></div><h3>Technical Summary</h3><table style={styles.table}><tbody><SpecRow label="Material" value={appConfig.material}/><SpecRow label="Scope" value={appConfig.defaultSpec}/><SpecRow label="Pump" value={pumpConfig.spec}/><SpecRow label="Crane" value={craneConfig.spec}/><SpecRow label="Notes" value={rfq.notes}/></tbody></table><h3>Commercial Offer</h3><table style={styles.table}><tbody><SpecRow label="Base Fabrication" value={`KWD ${appConfig.baseCost.toFixed(3)}`}/><SpecRow label="Pump / Hydraulic System" value={`KWD ${pumpConfig.cost.toFixed(3)}`}/><SpecRow label="Crane Installation" value={`KWD ${craneConfig.cost.toFixed(3)}`}/><SpecRow label="Accessories & Labor" value={`KWD ${(totals.accessories+totals.labor).toFixed(3)}`}/><SpecRow label="Total Offer Price" value={`KWD ${totals.sellingPrice.toFixed(3)}`}/></tbody></table><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginTop:18,fontSize:14}}><div><b>Validity:</b> 30 days</div><div><b>Delivery:</b> Subject to confirmation</div><div><b>Payment:</b> As agreed</div></div></div>}
-function Info({title,rows}){return <div style={{border:"1px solid #e2e8f0",borderRadius:12,padding:14}}><b>{title}</b>{rows.map(([k,v])=><div key={k} style={styles.row}><span style={styles.small}>{k}</span><span>{v}</span></div>)}</div>}
-function SpecRow({label,value}){return <tr><td style={{...styles.td,background:"#f8fafc",fontWeight:800,width:"30%"}}>{label}</td><td style={styles.td}>{value}</td></tr>}
-function Deals({deals}){return <div style={styles.card}><h2>Deal Tracker</h2><table style={styles.table}><thead><tr><th style={styles.th}>Quote No</th><th style={styles.th}>Date</th><th style={styles.th}>Customer</th><th style={styles.th}>Application</th><th style={styles.th}>Value</th><th style={styles.th}>Status</th></tr></thead><tbody>{deals.map((d)=><tr key={d.id}><td style={styles.td}>{d.quoteNo}</td><td style={styles.td}>{d.date}</td><td style={styles.td}>{d.customer}</td><td style={styles.td}>{d.application}</td><td style={styles.td}>KWD {d.value.toFixed(3)}</td><td style={styles.td}><span style={styles.badge}>{d.status}</span></td></tr>)}</tbody></table>{deals.length===0&&<p style={{textAlign:"center",color:"#64748b"}}>No deals saved yet.</p>}</div>}
-function Libraries(){return <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}><Library title="Applications" data={APPLICATIONS}/><Library title="Pumps" data={PUMPS}/><Library title="Cranes" data={CRANES}/></div>}
-function Library({title,data}){return <div style={styles.card}><h2>{title}</h2>{Object.entries(data).map(([name,item])=><div key={name} style={{border:"1px solid #e2e8f0",borderRadius:12,padding:12,marginBottom:10}}><b>{name}</b><div style={styles.small}>Cost: KWD {Number(item.baseCost||item.cost||0).toFixed(3)}</div><div style={styles.small}>{item.defaultSpec||item.spec}</div></div>)}</div>}
-
-createRoot(document.getElementById("root")).render(<AlDabbousQuotationApp />);
