@@ -199,9 +199,37 @@ function App() {
     });
   }
 
-  function saveDeal() {
-    setDeals([{ id: Date.now(), quoteNo: rfq.quoteNo, date: rfq.date, customer: rfq.customer || "Unnamed Customer", application: rfq.application, value: totals.selling, status: "Quote Sent" }, ...deals]);
-    setTab("deals");
+  async function saveDeal() {
+    try {
+      const quoteData = {
+        ...rfq,
+        totalCost: totals.totalCost,
+        sellingPrice: totals.selling,
+        status: "Quote Sent",
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, "quotes"), quoteData);
+
+      setDeals([
+        {
+          id: Date.now(),
+          quoteNo: rfq.quoteNo,
+          date: rfq.date,
+          customer: rfq.customer || "Unnamed Customer",
+          application: rfq.application,
+          value: totals.selling,
+          status: "Quote Sent"
+        },
+        ...deals
+      ]);
+
+      alert("Quote saved successfully to Firebase.");
+      setTab("deals");
+    } catch (error) {
+      console.error("Firebase save error:", error);
+      alert("Error saving quote. Please check Firestore setup and rules.");
+    }
   }
 
   return (
