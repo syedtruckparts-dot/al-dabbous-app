@@ -200,14 +200,28 @@ function App() {
   }
 
   async function saveDeal() {
-    try {
-      const quoteData = {
-        ...rfq,
-        totalCost: totals.totalCost,
-        sellingPrice: totals.selling,
-        status: "Quote Sent",
-        createdAt: serverTimestamp()
-      };
+  alert("Button clicked"); // TEST
+
+  try {
+    const quoteData = {
+      ...rfq,
+      totalCost: totals.totalCost,
+      sellingPrice: totals.selling,
+      status: "Quote Sent",
+      createdAt: serverTimestamp()
+    };
+
+    console.log("Saving to Firebase...", quoteData);
+
+    await addDoc(collection(db, "quotes"), quoteData);
+
+    alert("✅ Quote saved successfully!");
+
+  } catch (error) {
+    console.error("ERROR:", error);
+    alert("❌ Error: " + error.message);
+  }
+}
 
       await addDoc(collection(db, "quotes"), quoteData);
 
